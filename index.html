@@ -6,30 +6,28 @@
     <title>テキストを画像に変換してXに投稿</title>
 </head>
 <body>
+    <h2>画像付きイベント告知ジェネレーター</h2>
+
+    <input type="file" id="bgImageInput" accept="image/*"><br><br>
+
     <input type="text" id="text1" placeholder="1行目のテキスト"><br>
-    <input type="text" id="text2" placeholder="2行目のテキスト"><br>
+    <input type="text" id="text2" placeholder="2行目のテキスト"><br><br>
     
-    <!-- 開始時間のプルダウン -->
     <label for="startTime">開始時間:</label>
     <select id="startTime"></select>
     
-    <!-- 終了時間のプルダウン -->
     <label for="endTime">終了時間:</label>
     <select id="endTime"></select>
-    <br>
+    <br><br>
 
-    <!-- 自由記入欄 -->
     <input type="text" id="comment" placeholder="自由記入欄 (空欄可)"><br>
-
-    <!-- ハッシュタグ入力欄 -->
-    <input type="text" id="hashtags" placeholder="ハッシュタグ (例: #イベント #告知)"><br>
+    <input type="text" id="hashtags" placeholder="ハッシュタグ (例: #イベント #告知)"><br><br>
 
     <button id="generate">画像を作成</button>
     <button id="postToX" style="display: none;">Xに投稿</button>
-    <br>
-    
-    <!-- 画像表示エリア -->
-    <img id="outputImage" style="display: none; border: 1px solid #ccc; margin-top: 10px;" />
+    <br><br>
+
+    <img id="outputImage" style="display: none; border: 1px solid #ccc; max-width: 100%; margin-top: 10px;" />
 
     <canvas id="canvas" width="500" height="300" style="display: none;"></canvas>
 
@@ -47,6 +45,26 @@
         const generateButton = document.getElementById("generate");
         const postToXButton = document.getElementById("postToX");
         const outputImage = document.getElementById("outputImage");
+        const bgImageInput = document.getElementById("bgImageInput");
+
+        let backgroundImage = null;
+
+        // 画像を読み込み
+        bgImageInput.addEventListener("change", function (e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                const img = new Image();
+                img.onload = function () {
+                    backgroundImage = img;
+                    drawImage();  // 再描画
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
 
         // 30分刻みの時間をプルダウンに追加
         function generateTimeOptions(selectElement) {
@@ -62,50 +80,53 @@
         }
 
         function drawImage() {
-            // 背景を描画
-            ctx.fillStyle = "#f8f8f8";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            // 背景描画
+            if (backgroundImage) {
+                ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
+            } else {
+                ctx.fillStyle = "#f8f8f8";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
 
             // テキスト描画設定
             ctx.font = "24px Arial";
             ctx.fillStyle = "black";
             ctx.textAlign = "center";
 
-            // 各テキストをCanvasに描画
+            // テキスト
             textInputs.forEach((input, index) => {
                 ctx.fillText(input.value, canvas.width / 2, 90 + index * 50);
             });
 
-            // 開始時間と終了時間を "~" でつなげて表示
+            // 時間
             const timeText = `${startTimeSelect.value} ～ ${endTimeSelect.value}`;
             ctx.fillText(timeText, canvas.width / 2, 190);
 
-            // 自由記入欄が入力されていれば表示
+            // コメント
             if (commentInput.value.trim() !== "") {
                 ctx.fillText(commentInput.value, canvas.width / 2, 240);
             }
 
-            // Canvasの内容を画像に変換して表示
+            // 出力
             outputImage.src = canvas.toDataURL("image/png");
             outputImage.style.display = "block";
-            postToXButton.style.display = "block";
+            postToXButton.style.display = "inline-block";
         }
 
         function postToX() {
             const imageUrl = outputImage.src;
             const hashtags = hashtagInput.value.trim();
             const hashtagText = hashtags ? ` ${hashtags}` : "";
-
             const tweetText = `イベントのお知らせ！${hashtagText}`;
-            const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}&url=${encodeURIComponent(imageUrl)}`;
 
+            const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}&url=${encodeURIComponent(imageUrl)}`;
             window.open(tweetUrl, "_blank");
         }
 
         generateButton.addEventListener("click", drawImage);
         postToXButton.addEventListener("click", postToX);
 
-        // プルダウンメニューを初期化
+        // 初期化
         generateTimeOptions(startTimeSelect);
         generateTimeOptions(endTimeSelect);
     </script>
