@@ -2,274 +2,381 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Apex募集画像ジェネレーター</title>
-    <style>
-        body {
-            font-family: Arial, "Noto Sans JP", sans-serif;
-            max-width: 720px;
-            margin: 24px auto;
-            padding: 0 16px;
-            color: #222;
-        }
-        input, select, button {
-            font: inherit;
-            margin: 5px 0;
-            padding: 9px;
-        }
-        input[type="text"], select { max-width: 100%; }
-        button {
-            border: 0;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-        #templateButton { background: #e7efff; color: #174ea6; }
-        #generate { background: #2563eb; color: white; }
-        #downloadImage { background: #16834a; color: white; }
-        #postToX { background: #111; color: white; }
-        .field { margin: 8px 0; }
-        .field label { display: inline-block; min-width: 90px; }
-        #outputImage {
-            display: none;
-            border: 1px solid #ccc;
-            max-width: 100%;
-            height: auto;
-            margin-top: 12px;
-        }
-        .note { color: #555; font-size: 0.9rem; line-height: 1.6; }
-        .button-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Apex募集ジェネレーター</title>
+<style>
+body {
+    font-family: Arial, "Noto Sans JP", sans-serif;
+    max-width: 720px;
+    margin: 24px auto;
+    padding: 0 16px;
+    color: #222;
+}
+input, select, button {
+    font: inherit;
+    margin: 5px 0;
+    padding: 9px;
+}
+button {
+    border: 0;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+}
+button:disabled { opacity: .5; }
+#templateButton { background: #e7efff; color: #174ea6; }
+#generate { background: #2563eb; color: white; }
+#downloadImage { background: #16834a; color: white; }
+#postImageToX { background: #111; color: white; }
+#postTextToX { background: #1d9bf0; color: white; }
+.field { margin: 8px 0; }
+.field label { display: inline-block; min-width: 90px; }
+#outputImage {
+    display: none;
+    border: 1px solid #ccc;
+    max-width: 100%;
+    height: auto;
+    margin-top: 12px;
+}
+.note { color: #555; font-size: .9rem; line-height: 1.6; }
+.button-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+}
+</style>
 </head>
 <body>
-    <h2>Apex募集画像ジェネレーター</h2>
 
-    <div class="field">
-        <button type="button" id="templateButton">👑れんれん専用ボタン👑</button>
-    </div>
+<h2>Apex募集ジェネレーター</h2>
 
-    <div class="field">
-        <label for="bgImageInput">背景画像：</label>
-        <input type="file" id="bgImageInput" accept="image/*">
-    </div>
+<button type="button" id="templateButton">
+📋 募集テンプレートを入力
+</button>
 
-    <div class="field">
-        <label for="text1">1行目：</label>
-        <input type="text" id="text1" placeholder="1行目のテキスト">
-    </div>
-    <div class="field">
-        <label for="text2">2行目：</label>
-        <input type="text" id="text2" placeholder="2行目のテキスト">
-    </div>
-    <div class="field">
-        <label for="text3">3行目：</label>
-        <input type="text" id="text3" placeholder="3行目のテキスト">
-    </div>
-    <div class="field">
-        <label for="text4">4行目：</label>
-        <input type="text" id="text4" placeholder="4行目のテキスト">
-    </div>
+<div class="field">
+<label>背景画像：</label>
+<input type="file" id="bgImageInput" accept="image/*">
+</div>
 
-    <div class="field">
-        <label for="startTime">開始時間：</label>
-        <select id="startTime"></select>
-    </div>
-    <div class="field">
-        <label for="endTime">終了時間：</label>
-        <select id="endTime"></select>
-    </div>
-    <div class="field">
-        <label for="comment">自由記入：</label>
-        <input type="text" id="comment" placeholder="自由記入欄（空欄可）">
-    </div>
+<div class="field">
+<label>開始時間：</label>
+<select id="startTime"></select>
+</div>
 
-    <div class="button-row">
-        <button type="button" id="generate">画像を作成</button>
-        <button type="button" id="downloadImage" disabled>画像を保存</button>
-        <button type="button" id="postToX" disabled>Xを開く（本文なし）</button>
-    </div>
+<div class="field">
+<label>終了時間：</label>
+<select id="endTime"></select>
+</div>
 
-    <img id="outputImage" alt="作成した募集画像">
-    <canvas id="canvas" width="1200" height="600" hidden></canvas>
+<div class="field">
+<label>1行目：</label>
+<input type="text" id="text1" placeholder="1行目">
+</div>
 
-    <p class="note">
-        Xにはブラウザから画像を自動添付できません。
-        「画像を保存」でPNGを保存してからXを開き、投稿画面で画像を手動添付してください。
-        投稿本文は空欄のまま画像だけで投稿できます。
-    </p>
+<div class="field">
+<label>2行目：</label>
+<input type="text" id="text2" placeholder="2行目">
+</div>
 
-    <script>
-        const canvas = document.getElementById("canvas");
-        const ctx = canvas.getContext("2d");
+<div class="field">
+<label>3行目：</label>
+<input type="text" id="text3" placeholder="3行目">
+</div>
 
-        const textInputs = [
-            document.getElementById("text1"),
-            document.getElementById("text2"),
-            document.getElementById("text3"),
-            document.getElementById("text4")
-        ];
+<div class="field">
+<label>4行目：</label>
+<input type="text" id="text4" placeholder="4行目">
+</div>
 
-        const startTimeSelect = document.getElementById("startTime");
-        const endTimeSelect = document.getElementById("endTime");
-        const commentInput = document.getElementById("comment");
-        const generateButton = document.getElementById("generate");
-        const downloadButton = document.getElementById("downloadImage");
-        const postToXButton = document.getElementById("postToX");
-        const outputImage = document.getElementById("outputImage");
-        const bgImageInput = document.getElementById("bgImageInput");
+<div class="field">
+<label>自由記入：</label>
+<input type="text" id="comment" placeholder="自由記入（任意）">
+</div>
 
-        let backgroundImage = null;
-        let generatedBlob = null;
+<div class="button-row">
+<button type="button" id="generate">画像を作成</button>
+<button type="button" id="downloadImage" disabled>画像を保存</button>
+</div>
 
-        // テンプレートボタン：4つの入力欄へ一括入力
-        document.getElementById("templateButton").addEventListener("click", function () {
-            const template = [
-                "えぺぽ@2",
-                "なんでも🙆‍♀️",
-                "ランクならシルゴルプラ辺り",
-                "VCディスコで"
-            ];
+<div class="button-row">
+<button type="button" id="postImageToX" disabled>
+🖼️ 画像だけで投稿
+</button>
 
-            textInputs.forEach((input, index) => {
-                input.value = template[index];
-            });
-        });
+<button type="button" id="postTextToX">
+📝 テキストで投稿
+</button>
+</div>
 
-        // 30分刻みの時間をプルダウンに追加
-        function generateTimeOptions(selectElement) {
-            for (let hour = 0; hour < 24; hour++) {
-                for (let min = 0; min < 60; min += 30) {
-                    const time = `${String(hour).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
-                    const option = document.createElement("option");
-                    option.value = time;
-                    option.textContent = time;
-                    selectElement.appendChild(option);
-                }
-            }
+<img id="outputImage" alt="募集画像">
+<canvas id="canvas" width="1200" height="650" hidden></canvas>
+
+<p class="note">
+画像だけで投稿する場合は、PNG保存後にXで画像を添付してください。
+テキストで投稿する場合は、募集文を入力した状態でXを開きます。
+最後の投稿操作はX上で行ってください。
+</p>
+
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+const textInputs = [
+    document.getElementById("text1"),
+    document.getElementById("text2"),
+    document.getElementById("text3"),
+    document.getElementById("text4")
+];
+
+const startTime = document.getElementById("startTime");
+const endTime = document.getElementById("endTime");
+const comment = document.getElementById("comment");
+const outputImage = document.getElementById("outputImage");
+
+let backgroundImage = null;
+let generatedBlob = null;
+
+// テンプレート入力ボタン
+document.getElementById("templateButton").addEventListener("click", function() {
+    const template = [
+        "えぺぽ@2",
+        "なんでも🙆‍♀️",
+        "ランクならシルゴルプラ辺り",
+        "VCディスコで"
+    ];
+
+    textInputs.forEach((input, index) => {
+        input.value = template[index];
+    });
+});
+
+// 時間選択肢
+function generateTimeOptions(select, placeholder) {
+    const first = document.createElement("option");
+    first.value = "";
+    first.textContent = placeholder;
+    select.appendChild(first);
+
+    for (let h = 0; h < 24; h++) {
+        for (let m = 0; m < 60; m += 30) {
+            const time =
+                String(h).padStart(2, "0") + ":" +
+                String(m).padStart(2, "0");
+
+            const option = document.createElement("option");
+            option.value = time;
+            option.textContent = time;
+            select.appendChild(option);
+        }
+    }
+}
+
+generateTimeOptions(startTime, "指定なし");
+generateTimeOptions(endTime, "指定なし");
+
+// 時間表示用テキスト
+function getTimeText() {
+    const s = startTime.value;
+    const e = endTime.value;
+
+    if (s && e) return `${s} ～ ${e}`;
+    if (s) return `${s} ～`;
+    if (e) return `～ ${e}`;
+    return "";
+}
+
+// 背景画像読み込み
+document.getElementById("bgImageInput").addEventListener("change", function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = function(event) {
+        const img = new Image();
+
+        img.onload = function() {
+            backgroundImage = img;
+            drawImage();
+        };
+
+        img.src = event.target.result;
+    };
+
+    reader.readAsDataURL(file);
+});
+
+// 画像作成
+function drawImage() {
+
+    // 背景
+    if (backgroundImage) {
+        const scale = Math.max(
+            canvas.width / backgroundImage.width,
+            canvas.height / backgroundImage.height
+        );
+
+        const w = backgroundImage.width * scale;
+        const h = backgroundImage.height * scale;
+
+        ctx.drawImage(
+            backgroundImage,
+            (canvas.width - w) / 2,
+            (canvas.height - h) / 2,
+            w,
+            h
+        );
+
+        ctx.fillStyle = "rgba(255,255,255,0.18)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    } else {
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    const left = 32;
+    const timeText = getTimeText();
+
+    // 時間があれば一番上に大きく表示
+    let firstY = 95;
+
+    if (timeText) {
+        ctx.fillStyle = "#1473c9";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+
+        let size = 100;
+
+        ctx.font = `bold ${size}px "Noto Sans JP", sans-serif`;
+
+        while (
+            ctx.measureText(timeText).width > canvas.width - left * 2 &&
+            size > 48
+        ) {
+            size -= 2;
+            ctx.font = `bold ${size}px "Noto Sans JP", sans-serif`;
         }
 
-        // 背景画像を読み込み
-        bgImageInput.addEventListener("change", function (event) {
-            const file = event.target.files && event.target.files[0];
-            if (!file) {
-                backgroundImage = null;
-                return;
-            }
+        ctx.fillText(timeText, left, 75);
 
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                const img = new Image();
-                img.onload = function () {
-                    backgroundImage = img;
-                    drawImage();
-                };
-                img.src = e.target.result;
-            };
-            reader.readAsDataURL(file);
-        });
+        // 時間の下から募集文を開始
+        firstY = 205;
+    }
 
-        function drawImage() {
-            // 背景
-            if (backgroundImage) {
-                const scale = Math.max(
-                    canvas.width / backgroundImage.width,
-                    canvas.height / backgroundImage.height
-                );
-                const width = backgroundImage.width * scale;
-                const height = backgroundImage.height * scale;
-                ctx.drawImage(
-                    backgroundImage,
-                    (canvas.width - width) / 2,
-                    (canvas.height - height) / 2,
-                    width,
-                    height
-                );
-                ctx.fillStyle = "rgba(255,255,255,0.18)";
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-            } else {
-                ctx.fillStyle = "#ffffff";
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-            }
+    // 募集文4行
+    ctx.fillStyle = "#17191c";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
 
-            // 4行の募集文
-            ctx.fillStyle = "#17191c";
-            ctx.textAlign = "left";
-            ctx.textBaseline = "middle";
+    const lineGap = timeText ? 95 : 125;
 
-            const left = 32;
-            const firstY = 95;
-            const lineGap = 105;
+    textInputs.forEach((input, index) => {
+        const text = input.value.trim();
+        if (!text) return;
 
-            textInputs.forEach((input, index) => {
-                const text = input.value.trim();
-                if (!text) return;
+        let size = 66;
+        ctx.font = `${size}px "Noto Sans JP", sans-serif`;
 
-                let fontSize = 66;
-                ctx.font = `${fontSize}px "Noto Sans JP", "Yu Gothic", Meiryo, sans-serif`;
-
-                while (ctx.measureText(text).width > canvas.width - left * 2 && fontSize > 28) {
-                    fontSize -= 2;
-                    ctx.font = `${fontSize}px "Noto Sans JP", "Yu Gothic", Meiryo, sans-serif`;
-                }
-
-                ctx.fillText(text, left, firstY + index * lineGap);
-            });
-
-            // 時間・自由記入欄
-            const timeText = `${startTimeSelect.value} ～ ${endTimeSelect.value}`;
-            ctx.font = '34px "Noto Sans JP", "Yu Gothic", Meiryo, sans-serif';
-            ctx.textAlign = "left";
-
-            if (timeText !== "00:00 ～ 00:00") {
-                ctx.fillText(timeText, left, 525);
-            }
-            if (commentInput.value.trim() !== "") {
-                ctx.fillText(commentInput.value.trim(), left, 570);
-            }
-
-            outputImage.src = canvas.toDataURL("image/png");
-            outputImage.style.display = "block";
-
-            canvas.toBlob(function (blob) {
-                generatedBlob = blob;
-                downloadButton.disabled = !blob;
-                postToXButton.disabled = !blob;
-            }, "image/png");
+        while (
+            ctx.measureText(text).width > canvas.width - left * 2 &&
+            size > 28
+        ) {
+            size -= 2;
+            ctx.font = `${size}px "Noto Sans JP", sans-serif`;
         }
 
-        // PNG画像を保存
-        function downloadImage() {
-            if (!generatedBlob) return;
+        ctx.fillText(text, left, firstY + index * lineGap);
+    });
 
-            const url = URL.createObjectURL(generatedBlob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = "apex募集画像.png";
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
+    // 自由記入
+    if (comment.value.trim()) {
+        ctx.font = '34px "Noto Sans JP", sans-serif';
+        ctx.fillText(comment.value.trim(), left, 615);
+    }
+
+    outputImage.src = canvas.toDataURL("image/png");
+    outputImage.style.display = "block";
+
+    canvas.toBlob(function(blob) {
+        generatedBlob = blob;
+
+        document.getElementById("downloadImage").disabled = !blob;
+        document.getElementById("postImageToX").disabled = !blob;
+    }, "image/png");
+}
+
+// 画像作成ボタン
+document.getElementById("generate").addEventListener("click", drawImage);
+
+// 画像保存
+document.getElementById("downloadImage").addEventListener("click", function() {
+    if (!generatedBlob) return;
+
+    const url = URL.createObjectURL(generatedBlob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = "apex募集画像.png";
+
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+});
+
+// 画像だけで投稿
+document.getElementById("postImageToX").addEventListener("click", function() {
+    if (!generatedBlob) return;
+
+    window.open(
+        "https://twitter.com/intent/tweet",
+        "_blank",
+        "noopener,noreferrer"
+    );
+});
+
+// テキストで投稿
+document.getElementById("postTextToX").addEventListener("click", function() {
+
+    const lines = [];
+
+    // 時間
+    const timeText = getTimeText();
+    if (timeText) lines.push(timeText);
+
+    // 募集文
+    textInputs.forEach(input => {
+        if (input.value.trim()) {
+            lines.push(input.value.trim());
         }
+    });
 
-        // 本文なしでXの投稿画面を開く
-        function postToX() {
-            if (!generatedBlob) {
-                alert("先に画像を作成してください。");
-                return;
-            }
-            window.open("https://twitter.com/intent/tweet", "_blank", "noopener,noreferrer");
-        }
+    // 自由記入
+    if (comment.value.trim()) {
+        lines.push(comment.value.trim());
+    }
 
-        generateButton.addEventListener("click", drawImage);
-        downloadButton.addEventListener("click", downloadImage);
-        postToXButton.addEventListener("click", postToX);
+    if (lines.length === 0) {
+        alert("投稿する文章を入力してください。");
+        return;
+    }
 
-        // 初期化
-        generateTimeOptions(startTimeSelect);
-        generateTimeOptions(endTimeSelect);
-        startTimeSelect.value = "00:00";
-        endTimeSelect.value = "00:00";
-    </script>
+    const tweetText = lines.join("\n");
+
+    const url =
+        "https://twitter.com/intent/tweet?text=" +
+        encodeURIComponent(tweetText);
+
+    window.open(url, "_blank", "noopener,noreferrer");
+});
+
+document.getElementById("generate").addEventListener("click", drawImage);
+
+</script>
 </body>
 </html>
