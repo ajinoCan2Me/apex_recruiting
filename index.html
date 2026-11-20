@@ -1,76 +1,146 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>テキストを画像に変換してXに投稿</title>
+    <title>Apex募集画像ジェネレーター</title>
+    <style>
+        body {
+            font-family: Arial, "Noto Sans JP", sans-serif;
+            max-width: 720px;
+            margin: 24px auto;
+            padding: 0 16px;
+            color: #222;
+        }
+        input, select, button {
+            font: inherit;
+            margin: 5px 0;
+            padding: 9px;
+        }
+        input[type="text"], select { max-width: 100%; }
+        button {
+            border: 0;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        #templateButton { background: #e7efff; color: #174ea6; }
+        #generate { background: #2563eb; color: white; }
+        #downloadImage { background: #16834a; color: white; }
+        #postToX { background: #111; color: white; }
+        .field { margin: 8px 0; }
+        .field label { display: inline-block; min-width: 90px; }
+        #outputImage {
+            display: none;
+            border: 1px solid #ccc;
+            max-width: 100%;
+            height: auto;
+            margin-top: 12px;
+        }
+        .note { color: #555; font-size: 0.9rem; line-height: 1.6; }
+        .button-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    </style>
 </head>
 <body>
-    <h2>画像付きイベント告知ジェネレーター</h2>
+    <h2>Apex募集画像ジェネレーター</h2>
 
-    <input type="file" id="bgImageInput" accept="image/*"><br><br>
+    <div class="field">
+        <button type="button" id="templateButton">📋 募集テンプレートを入力</button>
+    </div>
 
-    <input type="text" id="text1" placeholder="1行目のテキスト"><br>
-    <input type="text" id="text2" placeholder="2行目のテキスト"><br><br>
-    
-    <label for="startTime">開始時間:</label>
-    <select id="startTime"></select>
-    
-    <label for="endTime">終了時間:</label>
-    <select id="endTime"></select>
-    <br><br>
+    <div class="field">
+        <label for="bgImageInput">背景画像：</label>
+        <input type="file" id="bgImageInput" accept="image/*">
+    </div>
 
-    <input type="text" id="comment" placeholder="自由記入欄 (空欄可)"><br>
-    <input type="text" id="hashtags" placeholder="ハッシュタグ (例: #イベント #告知)"><br><br>
+    <div class="field">
+        <label for="text1">1行目：</label>
+        <input type="text" id="text1" placeholder="1行目のテキスト">
+    </div>
+    <div class="field">
+        <label for="text2">2行目：</label>
+        <input type="text" id="text2" placeholder="2行目のテキスト">
+    </div>
+    <div class="field">
+        <label for="text3">3行目：</label>
+        <input type="text" id="text3" placeholder="3行目のテキスト">
+    </div>
+    <div class="field">
+        <label for="text4">4行目：</label>
+        <input type="text" id="text4" placeholder="4行目のテキスト">
+    </div>
 
-    <button id="generate">画像を作成</button>
-    <button id="postToX" style="display: none;">Xに投稿</button>
-    <br><br>
+    <div class="field">
+        <label for="startTime">開始時間：</label>
+        <select id="startTime"></select>
+    </div>
+    <div class="field">
+        <label for="endTime">終了時間：</label>
+        <select id="endTime"></select>
+    </div>
+    <div class="field">
+        <label for="comment">自由記入：</label>
+        <input type="text" id="comment" placeholder="自由記入欄（空欄可）">
+    </div>
 
-    <img id="outputImage" style="display: none; border: 1px solid #ccc; max-width: 100%; margin-top: 10px;" />
+    <div class="button-row">
+        <button type="button" id="generate">画像を作成</button>
+        <button type="button" id="downloadImage" disabled>画像を保存</button>
+        <button type="button" id="postToX" disabled>Xを開く（本文なし）</button>
+    </div>
 
-    <canvas id="canvas" width="500" height="300" style="display: none;"></canvas>
+    <img id="outputImage" alt="作成した募集画像">
+    <canvas id="canvas" width="1200" height="600" hidden></canvas>
+
+    <p class="note">
+        Xにはブラウザから画像を自動添付できません。
+        「画像を保存」でPNGを保存してからXを開き、投稿画面で画像を手動添付してください。
+        投稿本文は空欄のまま画像だけで投稿できます。
+    </p>
 
     <script>
         const canvas = document.getElementById("canvas");
         const ctx = canvas.getContext("2d");
+
         const textInputs = [
             document.getElementById("text1"),
-            document.getElementById("text2")
+            document.getElementById("text2"),
+            document.getElementById("text3"),
+            document.getElementById("text4")
         ];
+
         const startTimeSelect = document.getElementById("startTime");
         const endTimeSelect = document.getElementById("endTime");
         const commentInput = document.getElementById("comment");
-        const hashtagInput = document.getElementById("hashtags");
         const generateButton = document.getElementById("generate");
+        const downloadButton = document.getElementById("downloadImage");
         const postToXButton = document.getElementById("postToX");
         const outputImage = document.getElementById("outputImage");
         const bgImageInput = document.getElementById("bgImageInput");
 
         let backgroundImage = null;
+        let generatedBlob = null;
 
-        // 画像を読み込み
-        bgImageInput.addEventListener("change", function (e) {
-            const file = e.target.files[0];
-            if (!file) return;
+        // テンプレートボタン：4つの入力欄へ一括入力
+        document.getElementById("templateButton").addEventListener("click", function () {
+            const template = [
+                "えぺぽ@2",
+                "なんでも🙆‍♀️",
+                "ランクならシルゴルプラ辺り",
+                "VCディスコで"
+            ];
 
-            const reader = new FileReader();
-            reader.onload = function (event) {
-                const img = new Image();
-                img.onload = function () {
-                    backgroundImage = img;
-                    drawImage();  // 再描画
-                };
-                img.src = event.target.result;
-            };
-            reader.readAsDataURL(file);
+            textInputs.forEach((input, index) => {
+                input.value = template[index];
+            });
         });
 
         // 30分刻みの時間をプルダウンに追加
         function generateTimeOptions(selectElement) {
             for (let hour = 0; hour < 24; hour++) {
                 for (let min = 0; min < 60; min += 30) {
-                    const time = `${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+                    const time = `${String(hour).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
                     const option = document.createElement("option");
                     option.value = time;
                     option.textContent = time;
@@ -79,56 +149,127 @@
             }
         }
 
+        // 背景画像を読み込み
+        bgImageInput.addEventListener("change", function (event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) {
+                backgroundImage = null;
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const img = new Image();
+                img.onload = function () {
+                    backgroundImage = img;
+                    drawImage();
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
         function drawImage() {
-            // 背景描画
+            // 背景
             if (backgroundImage) {
-                ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
+                const scale = Math.max(
+                    canvas.width / backgroundImage.width,
+                    canvas.height / backgroundImage.height
+                );
+                const width = backgroundImage.width * scale;
+                const height = backgroundImage.height * scale;
+                ctx.drawImage(
+                    backgroundImage,
+                    (canvas.width - width) / 2,
+                    (canvas.height - height) / 2,
+                    width,
+                    height
+                );
+                ctx.fillStyle = "rgba(255,255,255,0.18)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
             } else {
-                ctx.fillStyle = "#f8f8f8";
+                ctx.fillStyle = "#ffffff";
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
             }
 
-            // テキスト描画設定
-            ctx.font = "24px Arial";
-            ctx.fillStyle = "black";
-            ctx.textAlign = "center";
+            // 4行の募集文
+            ctx.fillStyle = "#17191c";
+            ctx.textAlign = "left";
+            ctx.textBaseline = "middle";
 
-            // テキスト
+            const left = 32;
+            const firstY = 95;
+            const lineGap = 105;
+
             textInputs.forEach((input, index) => {
-                ctx.fillText(input.value, canvas.width / 2, 90 + index * 50);
+                const text = input.value.trim();
+                if (!text) return;
+
+                let fontSize = 66;
+                ctx.font = `${fontSize}px "Noto Sans JP", "Yu Gothic", Meiryo, sans-serif`;
+
+                while (ctx.measureText(text).width > canvas.width - left * 2 && fontSize > 28) {
+                    fontSize -= 2;
+                    ctx.font = `${fontSize}px "Noto Sans JP", "Yu Gothic", Meiryo, sans-serif`;
+                }
+
+                ctx.fillText(text, left, firstY + index * lineGap);
             });
 
-            // 時間
+            // 時間・自由記入欄
             const timeText = `${startTimeSelect.value} ～ ${endTimeSelect.value}`;
-            ctx.fillText(timeText, canvas.width / 2, 190);
+            ctx.font = '34px "Noto Sans JP", "Yu Gothic", Meiryo, sans-serif';
+            ctx.textAlign = "left";
 
-            // コメント
+            if (timeText !== "00:00 ～ 00:00") {
+                ctx.fillText(timeText, left, 525);
+            }
             if (commentInput.value.trim() !== "") {
-                ctx.fillText(commentInput.value, canvas.width / 2, 240);
+                ctx.fillText(commentInput.value.trim(), left, 570);
             }
 
-            // 出力
             outputImage.src = canvas.toDataURL("image/png");
             outputImage.style.display = "block";
-            postToXButton.style.display = "inline-block";
+
+            canvas.toBlob(function (blob) {
+                generatedBlob = blob;
+                downloadButton.disabled = !blob;
+                postToXButton.disabled = !blob;
+            }, "image/png");
         }
 
-        function postToX() {
-            const imageUrl = outputImage.src;
-            const hashtags = hashtagInput.value.trim();
-            const hashtagText = hashtags ? ` ${hashtags}` : "";
-            const tweetText = `イベントのお知らせ！${hashtagText}`;
+        // PNG画像を保存
+        function downloadImage() {
+            if (!generatedBlob) return;
 
-            const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}&url=${encodeURIComponent(imageUrl)}`;
-            window.open(tweetUrl, "_blank");
+            const url = URL.createObjectURL(generatedBlob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "apex募集画像.png";
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+
+        // 本文なしでXの投稿画面を開く
+        function postToX() {
+            if (!generatedBlob) {
+                alert("先に画像を作成してください。");
+                return;
+            }
+            window.open("https://twitter.com/intent/tweet", "_blank", "noopener,noreferrer");
         }
 
         generateButton.addEventListener("click", drawImage);
+        downloadButton.addEventListener("click", downloadImage);
         postToXButton.addEventListener("click", postToX);
 
         // 初期化
         generateTimeOptions(startTimeSelect);
         generateTimeOptions(endTimeSelect);
+        startTimeSelect.value = "00:00";
+        endTimeSelect.value = "00:00";
     </script>
 </body>
 </html>
